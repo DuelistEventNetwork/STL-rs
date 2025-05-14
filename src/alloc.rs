@@ -18,6 +18,7 @@ impl<A: GlobalAlloc + Clone> CxxProxy for A {
     }
 }
 
+#[inline]
 pub(crate) fn with_proxy<'a, T, R, F>(alloc: &'a T, f: F) -> R
 where
     T: CxxProxy,
@@ -40,6 +41,7 @@ impl<'a, A> RawAlloc<'a, A>
 where
     A: GlobalAlloc + 'a,
 {
+    #[inline]
     fn from_ref_mut(value: &'a mut A) -> Self {
         Self {
             base: CSTL_Alloc {
