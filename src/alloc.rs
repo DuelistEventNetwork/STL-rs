@@ -1,5 +1,5 @@
 use std::{
-    alloc::{GlobalAlloc, Layout, System},
+    alloc::{GlobalAlloc, Layout},
     ffi::c_void,
     marker::PhantomData,
     mem,
@@ -12,9 +12,9 @@ pub trait CxxProxy {
     fn proxy<'a>(&'a self) -> impl GlobalAlloc + 'a;
 }
 
-impl CxxProxy for System {
+impl<A: GlobalAlloc + Clone> CxxProxy for A {
     fn proxy<'a>(&'a self) -> impl GlobalAlloc + 'a {
-        System
+        self.clone()
     }
 }
 
