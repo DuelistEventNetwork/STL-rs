@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-cstl-sys = "2.1"
+cstl-sys = "2.2"
