@@ -11,7 +11,7 @@ Licensed under either of
 
 at your option.
 
-The Microsoft C++ Standard Library is under the Apache License v2.0 with LLVM Exceptions, a copy of which can be found at ["CSTL/STL/LICENSE.txt"](CSTL/STL/LICENSE.txt).
+The Microsoft C++ Standard Library is under the Apache License v2.0 with LLVM Exceptions, a copy of which can be found at ["STL/LICENSE.txt"](CSTL/STL/LICENSE.txt).
 
 ## Contribution
 
