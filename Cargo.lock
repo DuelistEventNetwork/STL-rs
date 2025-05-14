@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rsstl"
+name = "cxx-stl"
 version = "0.1.0"
 dependencies = [
  "cstl-sys",
