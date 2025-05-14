@@ -11,11 +11,12 @@ use std::{
 };
 
 use cstl_sys::{
-    CSTL_VectorVal, CSTL_vector_begin, CSTL_vector_copy_assign, CSTL_vector_copy_assign_range,
-    CSTL_vector_destroy, CSTL_vector_end, CSTL_vector_erase, CSTL_vector_iterator_add,
-    CSTL_vector_iterator_eq, CSTL_vector_move_assign, CSTL_vector_move_assign_range,
-    CSTL_vector_move_insert, CSTL_vector_move_push_back, CSTL_vector_pop_back, CSTL_vector_reserve,
-    CSTL_vector_resize, CSTL_vector_shrink_to_fit, CSTL_vector_truncate,
+    CSTL_VectorVal, CSTL_vector_begin, CSTL_vector_clear, CSTL_vector_copy_assign,
+    CSTL_vector_copy_assign_range, CSTL_vector_destroy, CSTL_vector_end, CSTL_vector_erase,
+    CSTL_vector_iterator_add, CSTL_vector_iterator_eq, CSTL_vector_move_assign,
+    CSTL_vector_move_assign_range, CSTL_vector_move_insert, CSTL_vector_move_push_back,
+    CSTL_vector_pop_back, CSTL_vector_reserve, CSTL_vector_resize, CSTL_vector_shrink_to_fit,
+    CSTL_vector_truncate,
 };
 use into_iter::IntoIter;
 
@@ -271,6 +272,12 @@ impl<T, A: CxxProxy> CxxVec<T, A> {
             CSTL_vector_erase(&mut self.val, &<DefaultUninit<T> as MoveType>::MOVE, pos);
 
             removed
+        }
+    }
+
+    pub fn clear(&mut self) {
+        unsafe {
+            CSTL_vector_clear(&mut self.val, &<T as BaseType>::DROP);
         }
     }
 
