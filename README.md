@@ -1,4 +1,4 @@
-# cstl-sys
+# STL-rs
 High level C++ [STL](https://github.com/microsoft/STL) Rust bindings.
 
 ## License
@@ -11,7 +11,7 @@ Licensed under either of
 
 at your option.
 
-The Microsoft C++ Standard Library is under the Apache License v2.0 with LLVM Exceptions, a copy of which can be found at ["STL/LICENSE.txt"](CSTL/STL/LICENSE.txt).
+The Microsoft C++ Standard Library is under the Apache License v2.0 with LLVM Exceptions, a copy of which can be found at ["STL/LICENSE.txt"](STL/LICENSE.txt).
 
 ## Contribution
 
