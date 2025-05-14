@@ -445,11 +445,7 @@ where
     A: CxxProxy + Default,
 {
     fn default() -> Self {
-        Self {
-            alloc: A::default(),
-            val: Self::new_val(),
-            _marker: PhantomData,
-        }
+        Self::new_in(A::default())
     }
 }
 
