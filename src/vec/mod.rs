@@ -463,6 +463,19 @@ impl<T, A: CxxProxy> DerefMut for CxxVec<T, A> {
     }
 }
 
+impl<T, A: CxxProxy> Drop for CxxVec<T, A> {
+    fn drop(&mut self) {
+        with_proxy(&self.alloc, |alloc| unsafe {
+            CSTL_vector_destroy(
+                &mut self.val,
+                <T as BaseType>::TYPE,
+                &<T as BaseType>::DROP,
+                alloc,
+            );
+        });
+    }
+}
+
 impl<T, A> Clone for CxxVec<T, A>
 where
     T: Clone + Sized,
@@ -486,19 +499,6 @@ where
         });
 
         new
-    }
-}
-
-impl<T, A: CxxProxy> Drop for CxxVec<T, A> {
-    fn drop(&mut self) {
-        with_proxy(&self.alloc, |alloc| unsafe {
-            CSTL_vector_destroy(
-                &mut self.val,
-                <T as BaseType>::TYPE,
-                &<T as BaseType>::DROP,
-                alloc,
-            );
-        });
     }
 }
 
