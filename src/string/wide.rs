@@ -2,7 +2,9 @@ use core::fmt;
 use std::{alloc::System as SysAlloc, borrow::Borrow, slice};
 
 use cstl_sys::{
-    CSTL_WideStringVal, CSTL_wstring_append_n, CSTL_wstring_assign_n, CSTL_wstring_c_str, CSTL_wstring_clear, CSTL_wstring_destroy, CSTL_wstring_reserve, CSTL_wstring_shrink_to_fit
+    CSTL_WideStringVal, CSTL_wstring_append_char, CSTL_wstring_append_n, CSTL_wstring_assign_n,
+    CSTL_wstring_c_str, CSTL_wstring_clear, CSTL_wstring_destroy, CSTL_wstring_reserve,
+    CSTL_wstring_shrink_to_fit,
 };
 
 use crate::alloc::{with_proxy, CxxProxy};
@@ -149,5 +151,17 @@ impl<A: CxxProxy> Drop for CxxWideString<A> {
 impl<A: CxxProxy + Clone> Clone for CxxWideString<A> {
     fn clone(&self) -> Self {
         Self::from_bytes_in(self, self.alloc.clone())
+    }
+}
+
+impl<A: CxxProxy> Extend<u16> for CxxWideString<A> {
+    fn extend<I: IntoIterator<Item = u16>>(&mut self, iter: I) {
+        let iter = iter.into_iter();
+        self.reserve(iter.size_hint().0);
+        with_proxy(&self.alloc, |alloc| unsafe {
+            for ch in iter {
+                CSTL_wstring_append_char(&mut self.val, 1, ch, alloc);
+            }
+        });
     }
 }

@@ -2,7 +2,9 @@ use core::fmt;
 use std::{alloc::System as SysAlloc, borrow::Borrow, slice};
 
 use cstl_sys::{
-    CSTL_UTF32StringVal, CSTL_u32string_append_n, CSTL_u32string_assign_n, CSTL_u32string_c_str, CSTL_u32string_clear, CSTL_u32string_destroy, CSTL_u32string_reserve, CSTL_u32string_shrink_to_fit
+    CSTL_UTF32StringVal, CSTL_u32string_append_char, CSTL_u32string_append_n,
+    CSTL_u32string_assign_n, CSTL_u32string_c_str, CSTL_u32string_clear, CSTL_u32string_destroy,
+    CSTL_u32string_reserve, CSTL_u32string_shrink_to_fit,
 };
 
 use crate::alloc::{with_proxy, CxxProxy};
@@ -149,5 +151,17 @@ impl<A: CxxProxy> Drop for CxxUtf32String<A> {
 impl<A: CxxProxy + Clone> Clone for CxxUtf32String<A> {
     fn clone(&self) -> Self {
         Self::from_bytes_in(self, self.alloc.clone())
+    }
+}
+
+impl<A: CxxProxy> Extend<u32> for CxxUtf32String<A> {
+    fn extend<I: IntoIterator<Item = u32>>(&mut self, iter: I) {
+        let iter = iter.into_iter();
+        self.reserve(iter.size_hint().0);
+        with_proxy(&self.alloc, |alloc| unsafe {
+            for ch in iter {
+                CSTL_u32string_append_char(&mut self.val, 1, ch, alloc);
+            }
+        });
     }
 }

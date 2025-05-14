@@ -1,7 +1,9 @@
 use std::{alloc::System as SysAlloc, borrow::Borrow, fmt, slice};
 
 use cstl_sys::{
-    CSTL_UTF8StringVal, CSTL_u8string_append_n, CSTL_u8string_assign_n, CSTL_u8string_c_str, CSTL_u8string_clear, CSTL_u8string_destroy, CSTL_u8string_reserve, CSTL_u8string_shrink_to_fit
+    CSTL_UTF8StringVal, CSTL_u8string_append_char, CSTL_u8string_append_n, CSTL_u8string_assign_n,
+    CSTL_u8string_c_str, CSTL_u8string_clear, CSTL_u8string_destroy, CSTL_u8string_reserve,
+    CSTL_u8string_shrink_to_fit,
 };
 
 use crate::alloc::{with_proxy, CxxProxy};
@@ -148,5 +150,17 @@ impl<A: CxxProxy> Drop for CxxUtf8String<A> {
 impl<A: CxxProxy + Clone> Clone for CxxUtf8String<A> {
     fn clone(&self) -> Self {
         Self::from_bytes_in(self, self.alloc.clone())
+    }
+}
+
+impl<A: CxxProxy> Extend<u8> for CxxUtf8String<A> {
+    fn extend<I: IntoIterator<Item = u8>>(&mut self, iter: I) {
+        let iter = iter.into_iter();
+        self.reserve(iter.size_hint().0);
+        with_proxy(&self.alloc, |alloc| unsafe {
+            for ch in iter {
+                CSTL_u8string_append_char(&mut self.val, 1, ch, alloc);
+            }
+        });
     }
 }
