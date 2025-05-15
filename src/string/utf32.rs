@@ -40,6 +40,10 @@ impl<A: CxxProxy> CxxUtf32String<A> {
         }
     }
 
+    pub const fn allocator(&self) -> &A {
+        &self.alloc
+    }
+
     pub fn from_bytes_in<T: AsRef<[u32]>>(s: T, alloc: A) -> Self {
         let mut new = Self::new_in(alloc);
 
