@@ -2,6 +2,11 @@
 name = "cxx-stl"
 version = "0.1.0"
 edition = "2021"
+authors = ["Dasaav"]
+description = "High level C++ STL Rust bindings"
+readme = "README.md"
+repository = "https://github.com/Dasaav-dsv/STL-rs"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 cstl-sys = "2.2"
