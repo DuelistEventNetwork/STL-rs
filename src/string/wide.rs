@@ -11,8 +11,11 @@ use crate::alloc::{with_proxy, CxxProxy};
 
 #[repr(C)]
 pub struct CxxWideString<A: CxxProxy = SysAlloc> {
+    #[cfg(not(feature = "msvc2012"))]
     alloc: A,
     val: CSTL_WideStringVal,
+    #[cfg(feature = "msvc2012")]
+    alloc: A,
 }
 
 impl CxxWideString<SysAlloc> {

@@ -29,8 +29,11 @@ pub mod into_iter;
 
 #[repr(C)]
 pub struct CxxVec<T, A: CxxProxy = SysAlloc> {
+    #[cfg(not(feature = "msvc2012"))]
     alloc: A,
     val: CSTL_VectorVal,
+    #[cfg(feature = "msvc2012")]
+    alloc: A,
     _marker: PhantomData<T>,
 }
 

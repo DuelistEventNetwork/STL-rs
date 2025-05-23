@@ -10,3 +10,6 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 cstl-sys = "2.2"
+
+[features]
+msvc2012 = []

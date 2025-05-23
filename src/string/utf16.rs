@@ -10,8 +10,11 @@ use crate::alloc::{with_proxy, CxxProxy};
 
 #[repr(C)]
 pub struct CxxUtf16String<A: CxxProxy = SysAlloc> {
+    #[cfg(not(feature = "msvc2012"))]
     alloc: A,
     val: CSTL_UTF16StringVal,
+    #[cfg(feature = "msvc2012")]
+    alloc: A,
 }
 
 impl CxxUtf16String<SysAlloc> {
