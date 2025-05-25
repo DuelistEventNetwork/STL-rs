@@ -9,6 +9,7 @@ use std::{
 
 use cstl_sys::CSTL_VectorVal;
 
+use super::CxxVecWithProxy;
 use crate::{alloc::CxxProxy, vec::CxxVec};
 
 pub struct IntoIter<T, A: CxxProxy = SysAlloc> {

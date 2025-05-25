@@ -9,11 +9,16 @@ use std::{
 use cstl_sys::CSTL_Alloc;
 
 pub trait CxxProxy {
-    fn proxy<'a>(&'a self) -> impl GlobalAlloc + 'a;
+    fn proxy<'a>(&self) -> impl GlobalAlloc + 'a
+    where
+        Self: 'a;
 }
 
 impl<A: GlobalAlloc + Clone> CxxProxy for A {
-    fn proxy<'a>(&'a self) -> impl GlobalAlloc + 'a {
+    fn proxy<'a>(&self) -> impl GlobalAlloc + 'a
+    where
+        Self: 'a,
+    {
         self.clone()
     }
 }
@@ -22,11 +27,44 @@ impl<A: GlobalAlloc + Clone> CxxProxy for A {
 pub(crate) fn with_proxy<'a, T, R, F>(alloc: &'a T, f: F) -> R
 where
     T: CxxProxy,
-    F: FnOnce(&mut CSTL_Alloc) -> R
+    F: FnOnce(&mut CSTL_Alloc) -> R,
 {
     let mut proxy_alloc = alloc.proxy();
     let mut raw_alloc = RawAlloc::from_ref_mut(&mut proxy_alloc);
     f(&mut raw_alloc.base)
+}
+
+pub trait WithCxxProxy<T>: Sized {
+    type Value;
+    type Alloc: CxxProxy;
+
+    fn value_as_ref(&self) -> &Self::Value;
+
+    fn value_as_mut(&mut self) -> &mut Self::Value;
+
+    fn alloc_as_ref(&self) -> &Self::Alloc;
+
+    fn new_in(alloc: Self::Alloc) -> Self;
+
+    #[inline]
+    fn with_proxy<R, F>(&self, f: F) -> R
+    where
+        F: FnOnce(&Self::Value, &mut CSTL_Alloc) -> R,
+    {
+        let mut proxy_alloc = self.alloc_as_ref().proxy();
+        let mut raw_alloc = RawAlloc::from_ref_mut(&mut proxy_alloc);
+        f(self.value_as_ref(), &mut raw_alloc.base)
+    }
+
+    #[inline]
+    fn with_proxy_mut<R, F>(&mut self, f: F) -> R
+    where
+        F: FnOnce(&mut Self::Value, &mut CSTL_Alloc) -> R,
+    {
+        let mut proxy_alloc = self.alloc_as_ref().proxy();
+        let mut raw_alloc = RawAlloc::from_ref_mut(&mut proxy_alloc);
+        f(self.value_as_mut(), &mut raw_alloc.base)
+    }
 }
 
 struct RawAlloc<'a, A>

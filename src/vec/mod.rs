@@ -21,7 +21,7 @@ use cstl_sys::{
 use into_iter::IntoIter;
 
 use crate::{
-    alloc::{with_proxy, CxxProxy},
+    alloc::{CxxProxy, WithCxxProxy},
     semantics::{BaseType, CopyMoveType, CopyOnlyType, DefaultUninit, MoveType},
 };
 
@@ -29,19 +29,19 @@ pub mod into_iter;
 
 #[repr(C)]
 pub struct CxxVec<T, A: CxxProxy = SysAlloc> {
-    #[cfg(not(feature = "msvc2012"))]
     alloc: A,
     val: CSTL_VectorVal,
-    #[cfg(feature = "msvc2012")]
-    alloc: A,
     _marker: PhantomData<T>,
 }
+
+#[cfg(feature = "msvc2012")]
+pub mod msvc2012;
 
 impl<T> CxxVec<T, SysAlloc> {
     pub const fn new() -> Self {
         Self {
             alloc: SysAlloc,
-            val: Self::new_val(),
+            val: new_val(),
             _marker: PhantomData,
         }
     }
@@ -51,7 +51,7 @@ impl<T, A: CxxProxy> CxxVec<T, A> {
     pub const fn new_in(alloc: A) -> Self {
         Self {
             alloc,
-            val: Self::new_val(),
+            val: new_val(),
             _marker: PhantomData,
         }
     }
@@ -59,45 +59,53 @@ impl<T, A: CxxProxy> CxxVec<T, A> {
     pub const fn allocator(&self) -> &A {
         &self.alloc
     }
+}
 
-    pub fn from_vec_in<A2: CxxProxy>(vec: CxxVec<T, A2>, alloc: A) -> Self {
-        let mut new = CxxVec::new_in(alloc);
+pub trait CxxVecWithProxy<T, A: CxxProxy>:
+    WithCxxProxy<T, Value = CSTL_VectorVal, Alloc = A> + Sized
+{
+    fn from_vec_in<V, A2>(vec: V, alloc: A) -> Self
+    where
+        V: CxxVecWithProxy<T, A2>,
+        A2: CxxProxy,
+    {
+        let mut new = Self::new_in(alloc);
         let mut drained = vec;
 
-        with_proxy(&drained.alloc, |old_alloc| {
-            with_proxy(&new.alloc, |new_alloc| unsafe {
+        drained.with_proxy_mut(|old_val, old_alloc| {
+            new.with_proxy_mut(|new_val, new_alloc| unsafe {
                 let moved = CSTL_vector_move_assign(
-                    &mut new.val,
+                    new_val,
                     <T as BaseType>::TYPE,
                     &<DefaultUninit<T> as MoveType>::MOVE,
-                    &mut drained.val,
+                    old_val,
                     old_alloc,
                     new_alloc,
                     false,
                 );
 
                 if moved {
-                    drained.val.last = drained.val.first;
+                    old_val.last = old_val.first;
                 }
-            });
+            })
         });
 
         new
     }
 
-    pub fn into_vec_in<A2: CxxProxy>(self, alloc: A2) -> CxxVec<T, A2> {
+    fn into_vec_in<A2: CxxProxy>(self, alloc: A2) -> CxxVec<T, A2> {
         CxxVec::from_vec_in(self, alloc)
     }
 
-    pub fn from_rust_vec_in(vec: Vec<T>, alloc: A) -> Self {
-        let mut new = CxxVec::new_in(alloc);
+    fn from_rust_vec_in(vec: Vec<T>, alloc: A) -> Self {
+        let mut new = Self::new_in(alloc);
         let mut drained = vec;
 
-        with_proxy(&new.alloc, |alloc| unsafe {
+        new.with_proxy_mut(|val, alloc| unsafe {
             let Range { start, end } = drained.as_mut_ptr_range();
 
             let moved = CSTL_vector_move_assign_range(
-                &mut new.val,
+                val,
                 <T as BaseType>::TYPE,
                 &<DefaultUninit<T> as MoveType>::MOVE,
                 start as _,
@@ -113,7 +121,7 @@ impl<T, A: CxxProxy> CxxVec<T, A> {
         new
     }
 
-    pub fn into_rust_vec(self) -> Vec<T> {
+    fn into_rust_vec(self) -> Vec<T> {
         let mut new = Vec::new();
         let mut drained = self;
 
@@ -125,13 +133,13 @@ impl<T, A: CxxProxy> CxxVec<T, A> {
 
             new.extend(left_uninit.iter_mut().map(|v| mem::take(v).assume_init()));
 
-            drained.val.last = drained.val.first;
+            drained.value_as_mut().last = drained.value_as_mut().first;
         };
 
         new
     }
 
-    pub fn from_slice_in(slice: &[T], alloc: A) -> Self
+    fn from_slice_in(slice: &[T], alloc: A) -> Self
     where
         T: Clone,
     {
@@ -139,11 +147,11 @@ impl<T, A: CxxProxy> CxxVec<T, A> {
 
         new.reserve(slice.len());
 
-        with_proxy(&new.alloc, |alloc| unsafe {
+        new.with_proxy_mut(|val, alloc| unsafe {
             let Range { start, end } = slice.as_ptr_range();
 
             CSTL_vector_copy_assign_range(
-                &mut new.val,
+                val,
                 <T as BaseType>::TYPE,
                 &<T as CopyOnlyType>::COPY,
                 start as _,
@@ -155,7 +163,7 @@ impl<T, A: CxxProxy> CxxVec<T, A> {
         new
     }
 
-    pub fn as_ptr(&self) -> *const T {
+    fn as_ptr(&self) -> *const T {
         if !self.first_ptr().is_null() {
             self.first_ptr()
         } else {
@@ -163,7 +171,7 @@ impl<T, A: CxxProxy> CxxVec<T, A> {
         }
     }
 
-    pub fn as_mut_ptr(&mut self) -> *mut T {
+    fn as_mut_ptr(&mut self) -> *mut T {
         if !self.first_ptr_mut().is_null() {
             self.first_ptr_mut()
         } else {
@@ -171,32 +179,32 @@ impl<T, A: CxxProxy> CxxVec<T, A> {
         }
     }
 
-    pub fn as_slice(&self) -> &[T] {
+    fn as_slice(&self) -> &[T] {
         unsafe { slice::from_raw_parts(self.as_ptr(), self.len()) }
     }
 
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
+    fn as_mut_slice(&mut self) -> &mut [T] {
         unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len()) }
     }
 
-    pub fn len(&self) -> usize {
+    fn len(&self) -> usize {
         unsafe { self.last_ptr().offset_from(self.first_ptr()) as usize }
     }
 
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.first_ptr() == self.end_ptr()
     }
 
-    pub fn capacity(&self) -> usize {
+    fn capacity(&self) -> usize {
         unsafe { self.end_ptr().offset_from(self.first_ptr()) as usize }
     }
 
-    pub fn push(&mut self, value: T) {
-        with_proxy(&self.alloc, |alloc| unsafe {
+    fn push(&mut self, value: T) {
+        self.with_proxy_mut(|val, alloc| unsafe {
             let mut value = DefaultUninit::new(value);
 
             let pushed = CSTL_vector_move_push_back(
-                &mut self.val,
+                val,
                 <T as BaseType>::TYPE,
                 &<DefaultUninit<T> as MoveType>::MOVE,
                 value.as_mut_ptr() as _,
@@ -204,18 +212,18 @@ impl<T, A: CxxProxy> CxxVec<T, A> {
             );
 
             if !pushed {
-                drop(value.assume_init());
+                let _ = value.assume_init();
             }
         });
     }
 
-    pub fn pop(&mut self) -> Option<T> {
+    fn pop(&mut self) -> Option<T> {
         if !self.is_empty() {
             unsafe {
                 let last = self.last_ptr().offset(-1).read();
 
                 CSTL_vector_pop_back(
-                    &mut self.val,
+                    self.value_as_mut(),
                     <T as BaseType>::TYPE,
                     &<DefaultUninit<T> as BaseType>::DROP,
                 );
@@ -227,37 +235,36 @@ impl<T, A: CxxProxy> CxxVec<T, A> {
         }
     }
 
-    pub fn insert(&mut self, index: usize, value: T) {
+    fn insert(&mut self, index: usize, value: T) {
         let len = self.len();
 
         if index > len {
             panic!("insertion index (is {index}) should be <= len (is {len})");
         }
 
-        with_proxy(&self.alloc, |alloc| unsafe {
+        self.with_proxy_mut(|val, alloc| unsafe {
             let pos = CSTL_vector_iterator_add(
-                CSTL_vector_begin(&self.val, <T as BaseType>::TYPE),
+                CSTL_vector_begin(val, <T as BaseType>::TYPE),
                 index as isize,
             );
 
             let mut value = DefaultUninit::new(value);
 
             let inserted = CSTL_vector_move_insert(
-                &mut self.val,
+                val,
                 &<DefaultUninit<T> as MoveType>::MOVE,
                 pos,
                 value.as_mut_ptr() as _,
                 alloc,
             );
 
-            if CSTL_vector_iterator_eq(inserted, CSTL_vector_end(&self.val, <T as BaseType>::TYPE))
-            {
+            if CSTL_vector_iterator_eq(inserted, CSTL_vector_end(val, <T as BaseType>::TYPE)) {
                 drop(value.assume_init());
             }
         });
     }
 
-    pub fn remove(&mut self, index: usize) -> T {
+    fn remove(&mut self, index: usize) -> T {
         let len = self.len();
 
         if index > len {
@@ -268,23 +275,27 @@ impl<T, A: CxxProxy> CxxVec<T, A> {
             let removed = self.first_ptr().offset(index as isize).read();
 
             let pos = CSTL_vector_iterator_add(
-                CSTL_vector_begin(&self.val, <T as BaseType>::TYPE),
+                CSTL_vector_begin(self.value_as_ref(), <T as BaseType>::TYPE),
                 index as isize,
             );
 
-            CSTL_vector_erase(&mut self.val, &<DefaultUninit<T> as MoveType>::MOVE, pos);
+            CSTL_vector_erase(
+                self.value_as_mut(),
+                &<DefaultUninit<T> as MoveType>::MOVE,
+                pos,
+            );
 
             removed
         }
     }
 
-    pub fn clear(&mut self) {
+    fn clear(&mut self) {
         unsafe {
-            CSTL_vector_clear(&mut self.val, &<T as BaseType>::DROP);
+            CSTL_vector_clear(self.value_as_mut(), &<T as BaseType>::DROP);
         }
     }
 
-    pub fn resize(&mut self, new_len: usize, value: T)
+    fn resize(&mut self, new_len: usize, value: T)
     where
         T: Clone,
     {
@@ -293,9 +304,9 @@ impl<T, A: CxxProxy> CxxVec<T, A> {
         }
 
         if new_len > self.len() {
-            with_proxy(&self.alloc, |alloc| unsafe {
+            self.with_proxy_mut(|val, alloc| unsafe {
                 CSTL_vector_resize(
-                    &mut self.val,
+                    val,
                     <T as BaseType>::TYPE,
                     &<DefaultUninit<T> as CopyMoveType>::COPY,
                     new_len,
@@ -308,7 +319,7 @@ impl<T, A: CxxProxy> CxxVec<T, A> {
         }
     }
 
-    pub fn resize_with<F>(&mut self, new_len: usize, mut f: F)
+    fn resize_with<F>(&mut self, new_len: usize, mut f: F)
     where
         F: FnMut() -> T,
     {
@@ -327,11 +338,11 @@ impl<T, A: CxxProxy> CxxVec<T, A> {
         }
     }
 
-    pub fn truncate(&mut self, new_len: usize) {
+    fn truncate(&mut self, new_len: usize) {
         if new_len < self.len() {
             unsafe {
                 CSTL_vector_truncate(
-                    &mut self.val,
+                    self.value_as_mut(),
                     <T as BaseType>::TYPE,
                     &<T as BaseType>::DROP,
                     new_len,
@@ -340,16 +351,16 @@ impl<T, A: CxxProxy> CxxVec<T, A> {
         }
     }
 
-    pub fn reserve(&mut self, additional: usize) {
+    fn reserve(&mut self, additional: usize) {
         let capacity = self.capacity();
 
         if isize::MAX as usize - capacity < additional {
             panic!("requested capacity ({capacity} + {additional}) overflowed `isize::MAX`");
         }
 
-        with_proxy(&self.alloc, |alloc| unsafe {
+        self.with_proxy_mut(|val, alloc| unsafe {
             CSTL_vector_reserve(
-                &mut self.val,
+                val,
                 <T as BaseType>::TYPE,
                 &<DefaultUninit<T> as MoveType>::MOVE,
                 capacity + additional,
@@ -358,42 +369,31 @@ impl<T, A: CxxProxy> CxxVec<T, A> {
         });
     }
 
-    pub fn shrink_to_fit(&mut self) {
-        with_proxy(&self.alloc, |alloc| unsafe {
+    fn shrink_to_fit(&mut self) {
+        self.with_proxy_mut(|val, alloc| unsafe {
             CSTL_vector_shrink_to_fit(
-                &mut self.val,
+                val,
                 <T as BaseType>::TYPE,
                 &<DefaultUninit<T> as MoveType>::MOVE,
                 alloc,
             );
         });
     }
-}
-
-impl<T, A: CxxProxy> CxxVec<T, A> {
-    const fn new_val() -> CSTL_VectorVal {
-        // Could be `CSTL_vector_construct`, but this is an easy optimization.
-        CSTL_VectorVal {
-            first: ptr::null_mut(),
-            last: ptr::null_mut(),
-            end: ptr::null_mut(),
-        }
-    }
 
     fn first_ptr(&self) -> *const T {
-        self.val.first as _
+        self.value_as_ref().first as _
     }
 
     fn last_ptr(&self) -> *const T {
-        self.val.last as _
+        self.value_as_ref().last as _
     }
 
     fn end_ptr(&self) -> *const T {
-        self.val.end as _
+        self.value_as_ref().end as _
     }
 
     fn first_ptr_mut(&mut self) -> *mut T {
-        self.val.first as _
+        self.value_as_mut().first as _
     }
 }
 
@@ -468,13 +468,8 @@ impl<T, A: CxxProxy> DerefMut for CxxVec<T, A> {
 
 impl<T, A: CxxProxy> Drop for CxxVec<T, A> {
     fn drop(&mut self) {
-        with_proxy(&self.alloc, |alloc| unsafe {
-            CSTL_vector_destroy(
-                &mut self.val,
-                <T as BaseType>::TYPE,
-                &<T as BaseType>::DROP,
-                alloc,
-            );
+        self.with_proxy_mut(|val, alloc| unsafe {
+            CSTL_vector_destroy(val, <T as BaseType>::TYPE, &<T as BaseType>::DROP, alloc);
         });
     }
 }
@@ -487,13 +482,13 @@ where
     fn clone(&self) -> Self {
         let mut new = Self::new_in(self.alloc.clone());
 
-        with_proxy(&self.alloc, |old_alloc| {
-            with_proxy(&new.alloc, |new_alloc| unsafe {
+        self.with_proxy(|old_val, old_alloc| {
+            new.with_proxy_mut(|new_val, new_alloc| unsafe {
                 CSTL_vector_copy_assign(
-                    &mut new.val,
+                    new_val,
                     <T as BaseType>::TYPE,
                     &<T as CopyOnlyType>::COPY,
-                    &self.val,
+                    old_val,
                     new_alloc,
                     old_alloc,
                     false,
@@ -610,3 +605,39 @@ impl<'a, T, A: CxxProxy> IntoIterator for &'a mut CxxVec<T, A> {
 unsafe impl<T: Send, A: CxxProxy + Send> Send for CxxVec<T, A> {}
 
 unsafe impl<T: Sync, A: CxxProxy + Sync> Sync for CxxVec<T, A> {}
+
+const fn new_val() -> CSTL_VectorVal {
+    CSTL_VectorVal {
+        first: ptr::null_mut(),
+        last: ptr::null_mut(),
+        end: ptr::null_mut(),
+    }
+}
+
+impl<T, A: CxxProxy> WithCxxProxy<T> for CxxVec<T, A> {
+    type Value = CSTL_VectorVal;
+    type Alloc = A;
+
+    fn value_as_ref(&self) -> &Self::Value {
+        &self.val
+    }
+
+    fn value_as_mut(&mut self) -> &mut Self::Value {
+        &mut self.val
+    }
+
+    fn alloc_as_ref(&self) -> &Self::Alloc {
+        &self.alloc
+    }
+
+    fn new_in(alloc: Self::Alloc) -> Self {
+        Self::new_in(alloc)
+    }
+}
+
+impl<T, A, V> CxxVecWithProxy<T, A> for V
+where
+    A: CxxProxy,
+    V: WithCxxProxy<T, Value = CSTL_VectorVal, Alloc = A>,
+{
+}
