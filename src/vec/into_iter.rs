@@ -9,8 +9,10 @@ use std::{
 
 use cstl_sys::CSTL_VectorVal;
 
-use super::CxxVecWithProxy;
-use crate::{alloc::CxxProxy, vec::CxxVec};
+use crate::{
+    alloc::CxxProxy,
+    vec::{CxxVec, Layout},
+};
 
 pub struct IntoIter<T, A: CxxProxy = SysAlloc> {
     pub(super) alloc: ManuallyDrop<A>,
@@ -112,9 +114,12 @@ impl<T, A: CxxProxy> Drop for IntoIter<T, A> {
             fn drop(&mut self) {
                 unsafe {
                     let _ = CxxVec {
-                        alloc: ManuallyDrop::take(&mut self.0.alloc),
-                        val: self.0.val,
-                        _marker: self.0._marker,
+                        inner: Layout {
+                            alloc: ManuallyDrop::take(&mut self.0.alloc),
+                            val: self.0.val,
+                            _marker: PhantomData::<T>,
+                        },
+                        _marker: PhantomData,
                     };
                 }
             }
