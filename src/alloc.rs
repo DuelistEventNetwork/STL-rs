@@ -1,3 +1,8 @@
+//! C++ allocation interface.
+//!
+//! Types that implement either [`CxxProxy`] or [`GlobalAlloc`] + [`Clone`]
+//! can be used as C++ compatible allocators.
+
 use std::{
     alloc::{GlobalAlloc, Layout},
     ffi::c_void,
@@ -8,6 +13,10 @@ use std::{
 
 use cstl_sys::CSTL_Alloc;
 
+/// Trait for types that can spawn an opaque allocator instance from itself
+/// via [`CxxProxy::proxy`].
+///
+/// Types that implement [`CxxProxy`] can be used as C++ compatible allocators.
 pub trait CxxProxy {
     fn proxy<'a>(&self) -> impl GlobalAlloc + 'a
     where
@@ -23,6 +32,7 @@ impl<A: GlobalAlloc + Clone> CxxProxy for A {
     }
 }
 
+#[doc(hidden)]
 pub trait WithCxxProxy<T>: Sized {
     type Value;
     type Alloc: CxxProxy;
