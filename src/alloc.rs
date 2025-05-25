@@ -23,17 +23,6 @@ impl<A: GlobalAlloc + Clone> CxxProxy for A {
     }
 }
 
-#[inline]
-pub(crate) fn with_proxy<'a, T, R, F>(alloc: &'a T, f: F) -> R
-where
-    T: CxxProxy,
-    F: FnOnce(&mut CSTL_Alloc) -> R,
-{
-    let mut proxy_alloc = alloc.proxy();
-    let mut raw_alloc = RawAlloc::from_ref_mut(&mut proxy_alloc);
-    f(&mut raw_alloc.base)
-}
-
 pub trait WithCxxProxy<T>: Sized {
     type Value;
     type Alloc: CxxProxy;
