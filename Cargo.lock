@@ -13,9 +13,9 @@ dependencies = [
 
 [[package]]
 name = "cstl-sys"
-version = "2.2.0"
+version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "139e6275fef418b2eed88096d95961f81cf1653fb6524020e2db9d57d34b3efd"
+checksum = "94f649cfeee5615f2422ac1d2bcd08ddc2e57b8e51a0a60cec3b6af88326fa74"
 dependencies = [
  "cc",
 ]
