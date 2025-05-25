@@ -12,5 +12,4 @@ license = "MIT OR Apache-2.0"
 cstl-sys = "2.2"
 
 [features]
-default = ["msvc2012"]
 msvc2012 = []
