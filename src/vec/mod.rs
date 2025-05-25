@@ -788,4 +788,3 @@ impl<T, A: CxxProxy> WithCxxProxy<T> for Layout<T, A> {
         }
     }
 }
-
