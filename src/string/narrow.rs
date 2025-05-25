@@ -6,26 +6,38 @@ use cstl_sys::{
     CSTL_string_shrink_to_fit,
 };
 
-use crate::alloc::{with_proxy, CxxProxy};
+use crate::alloc::{CxxProxy, WithCxxProxy};
+
+pub type CxxNarrowString<A = SysAlloc> = CxxNarrowStringLayout<A, Layout<A>>;
 
 #[repr(C)]
-pub struct CxxNarrowString<A: CxxProxy = SysAlloc> {
-    #[cfg(not(feature = "msvc2012"))]
+pub struct Layout<A: CxxProxy> {
     alloc: A,
     val: CSTL_StringVal,
-    #[cfg(feature = "msvc2012")]
-    alloc: A,
+}
+
+#[repr(C)]
+pub struct CxxNarrowStringLayout<A, L>
+where
+    A: CxxProxy,
+    L: WithCxxProxy<u8, Alloc = A, Value = CSTL_StringVal>,
+{
+    inner: L,
+}
+
+impl<A: CxxProxy> Layout<A> {
+    pub const fn new_in(alloc: A) -> Self {
+        Self {
+            alloc,
+            val: new_val(),
+        }
+    }
 }
 
 impl CxxNarrowString<SysAlloc> {
     pub const fn new() -> Self {
         Self {
-            alloc: SysAlloc,
-            val: CSTL_StringVal {
-                bx: cstl_sys::CSTL_StringUnion { buf: [0; 16] },
-                size: 0,
-                res: 15,
-            },
+            inner: Layout::new_in(SysAlloc),
         }
     }
 }
@@ -33,66 +45,67 @@ impl CxxNarrowString<SysAlloc> {
 impl<A: CxxProxy> CxxNarrowString<A> {
     pub const fn new_in(alloc: A) -> Self {
         Self {
-            alloc,
-            val: CSTL_StringVal {
-                bx: cstl_sys::CSTL_StringUnion { buf: [0; 16] },
-                size: 0,
-                res: 15,
-            },
+            inner: Layout::new_in(alloc),
         }
     }
 
     pub const fn allocator(&self) -> &A {
-        &self.alloc
+        &self.inner.alloc
     }
+}
 
+impl<A, L> CxxNarrowStringLayout<A, L>
+where
+    A: CxxProxy,
+    L: WithCxxProxy<u8, Alloc = A, Value = CSTL_StringVal>,
+{
     pub fn from_bytes_in<T: AsRef<[u8]>>(s: T, alloc: A) -> Self {
-        let mut new = Self::new_in(alloc);
+        let mut new = Self::from_alloc(alloc);
 
         let slice = s.as_ref();
 
-        with_proxy(&new.alloc, |alloc| unsafe {
-            CSTL_string_assign_n(&mut new.val, slice.as_ptr() as _, slice.len(), alloc);
+        new.inner.with_proxy_mut(|val, alloc| unsafe {
+            CSTL_string_assign_n(val, slice.as_ptr() as _, slice.len(), alloc);
         });
 
         new
     }
 
     pub fn as_ptr(&self) -> *const u8 {
-        unsafe { CSTL_string_c_str(&self.val) as _ }
+        unsafe { CSTL_string_c_str(self.inner.value_as_ref()) as _ }
     }
 
     pub fn as_bytes(&self) -> &[u8] {
-        unsafe { slice::from_raw_parts(CSTL_string_c_str(&self.val) as _, self.len()) }
+        unsafe { slice::from_raw_parts(self.as_ptr(), self.len()) }
     }
 
     pub fn as_bytes_with_nul(&self) -> &[u8] {
-        unsafe { slice::from_raw_parts(CSTL_string_c_str(&self.val) as _, self.len() + 1) }
+        unsafe { slice::from_raw_parts(self.as_ptr(), self.len() + 1) }
     }
 
     pub fn len(&self) -> usize {
-        self.val.size
+        self.inner.value_as_ref().size
     }
 
     pub fn is_empty(&self) -> bool {
-        self.val.size == 0
+        self.inner.value_as_ref().size == 0
     }
 
     pub fn capacity(&self) -> usize {
-        self.val.res
+        self.inner.value_as_ref().res
     }
 
     pub fn push<T: AsRef<[u8]>>(&mut self, s: T) {
         let slice = s.as_ref();
 
-        with_proxy(&self.alloc, |alloc| unsafe {
-            CSTL_string_append_n(&mut self.val, slice.as_ptr() as _, slice.len(), alloc);
+        self.inner.with_proxy_mut(|val, alloc| unsafe {
+            CSTL_string_append_n(val, slice.as_ptr() as _, slice.len(), alloc);
         });
     }
 
     pub fn clear(&mut self) {
         unsafe {
-            CSTL_string_clear(&mut self.val);
+            CSTL_string_clear(self.inner.value_as_mut());
         }
     }
 
@@ -103,71 +116,204 @@ impl<A: CxxProxy> CxxNarrowString<A> {
             panic!("requested capacity ({capacity} + {additional}) overflowed `isize::MAX`");
         }
 
-        with_proxy(&self.alloc, |alloc| unsafe {
-            CSTL_string_reserve(&mut self.val, capacity + additional, alloc);
+        self.inner.with_proxy_mut(|val, alloc| unsafe {
+            CSTL_string_reserve(val, capacity + additional, alloc);
         });
     }
 
     pub fn shrink_to_fit(&mut self) {
-        with_proxy(&self.alloc, |alloc| unsafe {
-            CSTL_string_shrink_to_fit(&mut self.val, alloc);
+        self.inner.with_proxy_mut(|val, alloc| unsafe {
+            CSTL_string_shrink_to_fit(val, alloc);
         });
+    }
+
+    fn from_alloc(alloc: A) -> Self {
+        Self {
+            inner: L::new_in(alloc),
+        }
     }
 }
 
-impl<A: CxxProxy> fmt::Debug for CxxNarrowString<A> {
+impl<A, L> fmt::Debug for CxxNarrowStringLayout<A, L>
+where
+    A: CxxProxy,
+    L: WithCxxProxy<u8, Alloc = A, Value = CSTL_StringVal>,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CxxNarrowString")
-            .field("length", &self.val.size)
-            .field("capacity", &self.val.res)
-            .field("large_mode", &(self.val.res > 15))
+            .field("length", &self.inner.value_as_ref().size)
+            .field("capacity", &self.inner.value_as_ref().res)
+            .field("large_mode", &(self.inner.value_as_ref().res > 15))
             .finish()
     }
 }
 
-impl<A: CxxProxy> AsRef<[u8]> for CxxNarrowString<A> {
+impl<A, L> AsRef<[u8]> for CxxNarrowStringLayout<A, L>
+where
+    A: CxxProxy,
+    L: WithCxxProxy<u8, Alloc = A, Value = CSTL_StringVal>,
+{
     fn as_ref(&self) -> &[u8] {
         self.as_bytes()
     }
 }
 
-impl<A: CxxProxy> Borrow<[u8]> for CxxNarrowString<A> {
+impl<A, L> Borrow<[u8]> for CxxNarrowStringLayout<A, L>
+where
+    A: CxxProxy,
+    L: WithCxxProxy<u8, Alloc = A, Value = CSTL_StringVal>,
+{
     fn borrow(&self) -> &[u8] {
         self.as_bytes()
     }
 }
 
-impl<A> Default for CxxNarrowString<A>
+impl<A, L> Default for CxxNarrowStringLayout<A, L>
 where
     A: CxxProxy + Default,
+    L: WithCxxProxy<u8, Alloc = A, Value = CSTL_StringVal>,
 {
     fn default() -> Self {
-        Self::new_in(A::default())
+        Self::from_alloc(A::default())
     }
 }
 
-impl<A: CxxProxy> Drop for CxxNarrowString<A> {
+impl<A, L> Drop for CxxNarrowStringLayout<A, L>
+where
+    A: CxxProxy,
+    L: WithCxxProxy<u8, Alloc = A, Value = CSTL_StringVal>,
+{
     fn drop(&mut self) {
-        with_proxy(&self.alloc, |alloc| unsafe {
-            CSTL_string_destroy(&mut self.val, alloc);
+        self.inner.with_proxy_mut(|val, alloc| unsafe {
+            CSTL_string_destroy(val, alloc);
         });
     }
 }
 
-impl<A: CxxProxy + Clone> Clone for CxxNarrowString<A> {
+impl<A, L> Clone for CxxNarrowStringLayout<A, L>
+where
+    A: CxxProxy + Clone,
+    L: WithCxxProxy<u8, Alloc = A, Value = CSTL_StringVal>,
+{
     fn clone(&self) -> Self {
-        Self::from_bytes_in(self, self.alloc.clone())
+        Self::from_bytes_in(self, self.inner.alloc_as_ref().clone())
     }
 }
 
-impl<A: CxxProxy> Extend<u8> for CxxNarrowString<A> {
+impl<A, L> Extend<u8> for CxxNarrowStringLayout<A, L>
+where
+    A: CxxProxy,
+    L: WithCxxProxy<u8, Alloc = A, Value = CSTL_StringVal>,
+{
     fn extend<I: IntoIterator<Item = u8>>(&mut self, iter: I) {
         let iter = iter.into_iter();
         self.reserve(iter.size_hint().0);
-        with_proxy(&self.alloc, |alloc| unsafe {
+        self.inner.with_proxy_mut(|val, alloc| unsafe {
             for ch in iter {
-                CSTL_string_append_char(&mut self.val, 1, ch as i8, alloc);
+                CSTL_string_append_char(val, 1, ch as i8, alloc);
             }
         });
+    }
+}
+
+const fn new_val() -> CSTL_StringVal {
+    CSTL_StringVal {
+        bx: cstl_sys::CSTL_StringUnion { buf: [0; 16] },
+        size: 0,
+        res: 15,
+    }
+}
+
+impl<A: CxxProxy> WithCxxProxy<u8> for Layout<A> {
+    type Value = CSTL_StringVal;
+    type Alloc = A;
+
+    fn value_as_ref(&self) -> &Self::Value {
+        &self.val
+    }
+
+    fn value_as_mut(&mut self) -> &mut Self::Value {
+        &mut self.val
+    }
+
+    fn alloc_as_ref(&self) -> &Self::Alloc {
+        &self.alloc
+    }
+
+    fn new_in(alloc: Self::Alloc) -> Self {
+        Self {
+            alloc,
+            val: new_val(),
+        }
+    }
+}
+
+#[cfg(feature = "msvc2012")]
+pub mod msvc2012 {
+    use cstl_sys::CSTL_StringVal;
+
+    use crate::alloc::{CxxProxy, WithCxxProxy};
+
+    use super::{new_val, CxxNarrowStringLayout, SysAlloc};
+
+    pub type CxxNarrowString<A = SysAlloc> = CxxNarrowStringLayout<A, Layout<A>>;
+
+    #[repr(C)]
+    pub struct Layout<A: CxxProxy> {
+        val: CSTL_StringVal,
+        alloc: A,
+    }
+
+    impl<A: CxxProxy> Layout<A> {
+        pub const fn new_in(alloc: A) -> Self {
+            Self {
+                alloc,
+                val: new_val(),
+            }
+        }
+    }
+
+    impl CxxNarrowString<SysAlloc> {
+        pub const fn new() -> Self {
+            Self {
+                inner: Layout::new_in(SysAlloc),
+            }
+        }
+    }
+
+    impl<A: CxxProxy> CxxNarrowString<A> {
+        pub const fn new_in(alloc: A) -> Self {
+            Self {
+                inner: Layout::new_in(alloc),
+            }
+        }
+
+        pub const fn allocator(&self) -> &A {
+            &self.inner.alloc
+        }
+    }
+
+    impl<A: CxxProxy> WithCxxProxy<u8> for Layout<A> {
+        type Value = CSTL_StringVal;
+        type Alloc = A;
+
+        fn value_as_ref(&self) -> &Self::Value {
+            &self.val
+        }
+
+        fn value_as_mut(&mut self) -> &mut Self::Value {
+            &mut self.val
+        }
+
+        fn alloc_as_ref(&self) -> &Self::Alloc {
+            &self.alloc
+        }
+
+        fn new_in(alloc: Self::Alloc) -> Self {
+            Self {
+                alloc,
+                val: new_val(),
+            }
+        }
     }
 }
