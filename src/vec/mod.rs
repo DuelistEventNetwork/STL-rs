@@ -29,10 +29,10 @@ pub mod into_iter;
 #[cfg(feature = "msvc2012")]
 pub mod msvc2012;
 
-type CxxVec<T, A = SysAlloc> = CxxVecLayout<T, A, Layout<T, A>>;
+pub type CxxVec<T, A = SysAlloc> = CxxVecLayout<T, A, Layout<T, A>>;
 
 #[repr(C)]
-struct Layout<T, A: CxxProxy> {
+pub struct Layout<T, A: CxxProxy> {
     alloc: A,
     val: CSTL_VectorVal,
     _marker: PhantomData<T>,
