@@ -1,6 +1,6 @@
 [package]
 name = "cxx-stl"
-version = "0.2.0"
+version = "1.0.0"
 edition = "2021"
 authors = ["Dasaav"]
 description = "High level C++ STL Rust bindings"
@@ -12,4 +12,5 @@ license = "MIT OR Apache-2.0"
 cstl-sys = "2.2"
 
 [features]
+default = ["msvc2012"]
 msvc2012 = []
