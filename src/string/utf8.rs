@@ -103,6 +103,11 @@ where
         });
     }
 
+    pub fn replace<T: AsRef<[u8]>>(&mut self, s: T) {
+        self.clear();
+        self.push(s);
+    }
+
     pub fn clear(&mut self) {
         unsafe {
             CSTL_u8string_clear(self.inner.value_as_mut());

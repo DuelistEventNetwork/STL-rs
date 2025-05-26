@@ -103,6 +103,11 @@ where
         });
     }
 
+    pub fn replace<T: AsRef<[u16]>>(&mut self, s: T) {
+        self.clear();
+        self.push(s);
+    }
+
     pub fn clear(&mut self) {
         unsafe {
             CSTL_wstring_clear(self.inner.value_as_mut());
