@@ -15,7 +15,7 @@ use cstl_sys::{CSTL_CopyType, CSTL_DropType, CSTL_MoveType, CSTL_Type};
 pub trait BaseType: Sized {
     /// CSTL type handle.
     const TYPE: CSTL_Type = if Self::SIZE & Self::ALIGN == 0 {
-        !Self::SIZE | Self::ALIGN + 1
+        usize::wrapping_neg(Self::SIZE | Self::ALIGN)
     } else {
         Self::SIZE
     } as CSTL_Type;
