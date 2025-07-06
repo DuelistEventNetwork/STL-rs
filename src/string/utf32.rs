@@ -1,7 +1,8 @@
 use std::{alloc::System as SysAlloc, borrow::Borrow, fmt, slice};
 
+pub use cstl_sys::CSTL_UTF32StringVal as RawUtf32String;
 use cstl_sys::{
-    CSTL_UTF32StringVal, CSTL_u32string_append_char, CSTL_u32string_append_n, CSTL_u32string_assign_n,
+    CSTL_u32string_append_char, CSTL_u32string_append_n, CSTL_u32string_assign_n,
     CSTL_u32string_c_str, CSTL_u32string_clear, CSTL_u32string_destroy, CSTL_u32string_reserve,
     CSTL_u32string_shrink_to_fit,
 };
@@ -13,14 +14,14 @@ pub type CxxUtf32String<A = SysAlloc> = CxxUtf32StringLayout<A, Layout<A>>;
 #[repr(C)]
 pub struct Layout<A: CxxProxy> {
     alloc: A,
-    val: CSTL_UTF32StringVal,
+    val: RawUtf32String,
 }
 
 #[repr(C)]
 pub struct CxxUtf32StringLayout<A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<u32, Alloc = A, Value = CSTL_UTF32StringVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawUtf32String>,
 {
     inner: L,
 }
@@ -57,7 +58,7 @@ impl<A: CxxProxy> CxxUtf32String<A> {
 impl<A, L> CxxUtf32StringLayout<A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<u32, Alloc = A, Value = CSTL_UTF32StringVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawUtf32String>,
 {
     pub fn from_bytes_in<T: AsRef<[u32]>>(s: T, alloc: A) -> Self {
         let mut new = Self::from_alloc(alloc);
@@ -142,7 +143,7 @@ where
 impl<A, L> fmt::Debug for CxxUtf32StringLayout<A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<u32, Alloc = A, Value = CSTL_UTF32StringVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawUtf32String>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CxxUtf32String")
@@ -156,7 +157,7 @@ where
 impl<A, L> AsRef<[u32]> for CxxUtf32StringLayout<A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<u32, Alloc = A, Value = CSTL_UTF32StringVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawUtf32String>,
 {
     fn as_ref(&self) -> &[u32] {
         self.as_bytes()
@@ -166,7 +167,7 @@ where
 impl<A, L> Borrow<[u32]> for CxxUtf32StringLayout<A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<u32, Alloc = A, Value = CSTL_UTF32StringVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawUtf32String>,
 {
     fn borrow(&self) -> &[u32] {
         self.as_bytes()
@@ -176,7 +177,7 @@ where
 impl<A, L> Default for CxxUtf32StringLayout<A, L>
 where
     A: CxxProxy + Default,
-    L: WithCxxProxy<u32, Alloc = A, Value = CSTL_UTF32StringVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawUtf32String>,
 {
     fn default() -> Self {
         Self::from_alloc(A::default())
@@ -186,7 +187,7 @@ where
 impl<A, L> Drop for CxxUtf32StringLayout<A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<u32, Alloc = A, Value = CSTL_UTF32StringVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawUtf32String>,
 {
     fn drop(&mut self) {
         self.inner.with_proxy_mut(|val, alloc| unsafe {
@@ -198,7 +199,7 @@ where
 impl<A, L> Clone for CxxUtf32StringLayout<A, L>
 where
     A: CxxProxy + Clone,
-    L: WithCxxProxy<u32, Alloc = A, Value = CSTL_UTF32StringVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawUtf32String>,
 {
     fn clone(&self) -> Self {
         Self::from_bytes_in(self, self.inner.alloc_as_ref().clone())
@@ -208,7 +209,7 @@ where
 impl<A, L> Extend<u32> for CxxUtf32StringLayout<A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<u32, Alloc = A, Value = CSTL_UTF32StringVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawUtf32String>,
 {
     fn extend<I: IntoIterator<Item = u32>>(&mut self, iter: I) {
         let iter = iter.into_iter();
@@ -221,16 +222,16 @@ where
     }
 }
 
-const fn new_val() -> CSTL_UTF32StringVal {
-    CSTL_UTF32StringVal {
+const fn new_val() -> RawUtf32String {
+    RawUtf32String {
         bx: cstl_sys::CSTL_UTF32StringUnion { buf: [0; 4] },
         size: 0,
         res: 3,
     }
 }
 
-impl<A: CxxProxy> WithCxxProxy<u32> for Layout<A> {
-    type Value = CSTL_UTF32StringVal;
+impl<A: CxxProxy> WithCxxProxy for Layout<A> {
+    type Value = RawUtf32String;
     type Alloc = A;
 
     fn value_as_ref(&self) -> &Self::Value {
@@ -255,7 +256,7 @@ impl<A: CxxProxy> WithCxxProxy<u32> for Layout<A> {
 
 #[cfg(feature = "msvc2012")]
 pub mod msvc2012 {
-    use cstl_sys::CSTL_UTF32StringVal;
+    use cstl_sys::CSTL_UTF32StringVal as RawUtf32String;
 
     use crate::alloc::{CxxProxy, WithCxxProxy};
 
@@ -265,7 +266,7 @@ pub mod msvc2012 {
 
     #[repr(C)]
     pub struct Layout<A: CxxProxy> {
-        val: CSTL_UTF32StringVal,
+        val: RawUtf32String,
         alloc: A,
     }
 
@@ -299,7 +300,7 @@ pub mod msvc2012 {
     }
 
     impl<A: CxxProxy> WithCxxProxy<u32> for Layout<A> {
-        type Value = CSTL_UTF32StringVal;
+        type Value = RawUtf32String;
         type Alloc = A;
 
         fn value_as_ref(&self) -> &Self::Value {

@@ -1,7 +1,8 @@
 use std::{alloc::System as SysAlloc, borrow::Borrow, fmt, slice};
 
+pub use cstl_sys::CSTL_WideStringVal as RawWideString;
 use cstl_sys::{
-    CSTL_WideStringVal, CSTL_wstring_append_char, CSTL_wstring_append_n, CSTL_wstring_assign_n,
+    CSTL_wstring_append_char, CSTL_wstring_append_n, CSTL_wstring_assign_n,
     CSTL_wstring_c_str, CSTL_wstring_clear, CSTL_wstring_destroy, CSTL_wstring_reserve,
     CSTL_wstring_shrink_to_fit,
 };
@@ -13,14 +14,14 @@ pub type CxxWideString<A = SysAlloc> = CxxWideStringLayout<A, Layout<A>>;
 #[repr(C)]
 pub struct Layout<A: CxxProxy> {
     alloc: A,
-    val: CSTL_WideStringVal,
+    val: RawWideString,
 }
 
 #[repr(C)]
 pub struct CxxWideStringLayout<A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<u16, Alloc = A, Value = CSTL_WideStringVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawWideString>,
 {
     inner: L,
 }
@@ -57,7 +58,7 @@ impl<A: CxxProxy> CxxWideString<A> {
 impl<A, L> CxxWideStringLayout<A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<u16, Alloc = A, Value = CSTL_WideStringVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawWideString>,
 {
     pub fn from_bytes_in<T: AsRef<[u16]>>(s: T, alloc: A) -> Self {
         let mut new = Self::from_alloc(alloc);
@@ -142,7 +143,7 @@ where
 impl<A, L> fmt::Debug for CxxWideStringLayout<A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<u16, Alloc = A, Value = CSTL_WideStringVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawWideString>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CxxWideString")
@@ -156,7 +157,7 @@ where
 impl<A, L> AsRef<[u16]> for CxxWideStringLayout<A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<u16, Alloc = A, Value = CSTL_WideStringVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawWideString>,
 {
     fn as_ref(&self) -> &[u16] {
         self.as_bytes()
@@ -166,7 +167,7 @@ where
 impl<A, L> Borrow<[u16]> for CxxWideStringLayout<A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<u16, Alloc = A, Value = CSTL_WideStringVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawWideString>,
 {
     fn borrow(&self) -> &[u16] {
         self.as_bytes()
@@ -176,7 +177,7 @@ where
 impl<A, L> Default for CxxWideStringLayout<A, L>
 where
     A: CxxProxy + Default,
-    L: WithCxxProxy<u16, Alloc = A, Value = CSTL_WideStringVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawWideString>,
 {
     fn default() -> Self {
         Self::from_alloc(A::default())
@@ -186,7 +187,7 @@ where
 impl<A, L> Drop for CxxWideStringLayout<A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<u16, Alloc = A, Value = CSTL_WideStringVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawWideString>,
 {
     fn drop(&mut self) {
         self.inner.with_proxy_mut(|val, alloc| unsafe {
@@ -198,7 +199,7 @@ where
 impl<A, L> Clone for CxxWideStringLayout<A, L>
 where
     A: CxxProxy + Clone,
-    L: WithCxxProxy<u16, Alloc = A, Value = CSTL_WideStringVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawWideString>,
 {
     fn clone(&self) -> Self {
         Self::from_bytes_in(self, self.inner.alloc_as_ref().clone())
@@ -208,7 +209,7 @@ where
 impl<A, L> Extend<u16> for CxxWideStringLayout<A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<u16, Alloc = A, Value = CSTL_WideStringVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawWideString>,
 {
     fn extend<I: IntoIterator<Item = u16>>(&mut self, iter: I) {
         let iter = iter.into_iter();
@@ -221,16 +222,16 @@ where
     }
 }
 
-const fn new_val() -> CSTL_WideStringVal {
-    CSTL_WideStringVal {
+const fn new_val() -> RawWideString {
+    RawWideString {
         bx: cstl_sys::CSTL_WideStringUnion { buf: [0; 8] },
         size: 0,
         res: 7,
     }
 }
 
-impl<A: CxxProxy> WithCxxProxy<u16> for Layout<A> {
-    type Value = CSTL_WideStringVal;
+impl<A: CxxProxy> WithCxxProxy for Layout<A> {
+    type Value = RawWideString;
     type Alloc = A;
 
     fn value_as_ref(&self) -> &Self::Value {
@@ -255,7 +256,7 @@ impl<A: CxxProxy> WithCxxProxy<u16> for Layout<A> {
 
 #[cfg(feature = "msvc2012")]
 pub mod msvc2012 {
-    use cstl_sys::CSTL_WideStringVal;
+    use cstl_sys::CSTL_WideStringVal as RawWideString;
 
     use crate::alloc::{CxxProxy, WithCxxProxy};
 
@@ -265,7 +266,7 @@ pub mod msvc2012 {
 
     #[repr(C)]
     pub struct Layout<A: CxxProxy> {
-        val: CSTL_WideStringVal,
+        val: RawWideString,
         alloc: A,
     }
 
@@ -299,7 +300,7 @@ pub mod msvc2012 {
     }
 
     impl<A: CxxProxy> WithCxxProxy<u16> for Layout<A> {
-        type Value = CSTL_WideStringVal;
+        type Value = RawWideString;
         type Alloc = A;
 
         fn value_as_ref(&self) -> &Self::Value {

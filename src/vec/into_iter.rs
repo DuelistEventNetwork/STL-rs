@@ -7,7 +7,7 @@ use std::{
     slice,
 };
 
-use cstl_sys::CSTL_VectorVal;
+use cstl_sys::CSTL_VectorVal as RawVec;
 
 use crate::{
     alloc::CxxProxy,
@@ -16,7 +16,7 @@ use crate::{
 
 pub struct IntoIter<T, A: CxxProxy = SysAlloc> {
     pub(super) alloc: ManuallyDrop<A>,
-    pub(super) val: CSTL_VectorVal,
+    pub(super) val: RawVec,
     pub(super) _marker: PhantomData<T>,
     pub(super) ptr: NonNull<T>,
     pub(super) end: NonNull<T>,

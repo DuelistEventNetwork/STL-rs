@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use cstl_sys::CSTL_VectorVal;
+use cstl_sys::CSTL_VectorVal as RawVec;
 
 use crate::alloc::{CxxProxy, WithCxxProxy};
 
@@ -10,7 +10,7 @@ pub type CxxVec<T, A = SysAlloc> = CxxVecLayout<T, A, Layout<T, A>>;
 
 #[repr(C)]
 pub struct Layout<T, A: CxxProxy> {
-    val: CSTL_VectorVal,
+    val: RawVec,
     alloc: A,
     _marker: PhantomData<T>,
 }
@@ -47,8 +47,8 @@ impl<T, A: CxxProxy> CxxVec<T, A> {
     }
 }
 
-impl<T, A: CxxProxy> WithCxxProxy<T> for Layout<T, A> {
-    type Value = CSTL_VectorVal;
+impl<T, A: CxxProxy> WithCxxProxy for Layout<T, A> {
+    type Value = RawVec;
     type Alloc = A;
 
     fn value_as_ref(&self) -> &Self::Value {

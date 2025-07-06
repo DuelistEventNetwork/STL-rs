@@ -10,13 +10,13 @@ use std::{
     slice::{self, SliceIndex},
 };
 
+pub use cstl_sys::CSTL_VectorVal as RawVec;
 use cstl_sys::{
-    CSTL_VectorVal, CSTL_vector_begin, CSTL_vector_clear, CSTL_vector_copy_assign,
-    CSTL_vector_copy_assign_range, CSTL_vector_destroy, CSTL_vector_end, CSTL_vector_erase,
-    CSTL_vector_iterator_add, CSTL_vector_iterator_eq, CSTL_vector_move_assign,
-    CSTL_vector_move_assign_range, CSTL_vector_move_insert, CSTL_vector_move_push_back,
-    CSTL_vector_pop_back, CSTL_vector_reserve, CSTL_vector_resize, CSTL_vector_shrink_to_fit,
-    CSTL_vector_truncate,
+    CSTL_vector_begin, CSTL_vector_clear, CSTL_vector_copy_assign, CSTL_vector_copy_assign_range,
+    CSTL_vector_destroy, CSTL_vector_end, CSTL_vector_erase, CSTL_vector_iterator_add,
+    CSTL_vector_iterator_eq, CSTL_vector_move_assign, CSTL_vector_move_assign_range,
+    CSTL_vector_move_insert, CSTL_vector_move_push_back, CSTL_vector_pop_back, CSTL_vector_reserve,
+    CSTL_vector_resize, CSTL_vector_shrink_to_fit, CSTL_vector_truncate,
 };
 use into_iter::IntoIter;
 
@@ -34,7 +34,7 @@ pub type CxxVec<T, A = SysAlloc> = CxxVecLayout<T, A, Layout<T, A>>;
 #[repr(C)]
 pub struct Layout<T, A: CxxProxy> {
     alloc: A,
-    val: CSTL_VectorVal,
+    val: RawVec,
     _marker: PhantomData<T>,
 }
 
@@ -42,7 +42,7 @@ pub struct Layout<T, A: CxxProxy> {
 pub struct CxxVecLayout<T, A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     inner: L,
     _marker: PhantomData<(T, A)>,
@@ -83,11 +83,11 @@ impl<T, A: CxxProxy> CxxVec<T, A> {
 impl<T, A, L> CxxVecLayout<T, A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     pub fn from_vec_in<L2, A2>(vec: CxxVecLayout<T, A2, L2>, alloc: A) -> Self
     where
-        L2: WithCxxProxy<T, Alloc = A2, Value = CSTL_VectorVal>,
+        L2: WithCxxProxy<Alloc = A2, Value = RawVec>,
         A2: CxxProxy,
     {
         let mut new = Self::from_alloc(alloc);
@@ -116,7 +116,7 @@ where
 
     pub fn into_vec_in<A2, L2>(self, alloc: A2) -> CxxVecLayout<T, A2, L2>
     where
-        L2: WithCxxProxy<T, Alloc = A2, Value = CSTL_VectorVal>,
+        L2: WithCxxProxy<Alloc = A2, Value = RawVec>,
         A2: CxxProxy,
     {
         CxxVecLayout::from_vec_in(self, alloc)
@@ -409,7 +409,7 @@ where
 impl<T, A, L> CxxVecLayout<T, A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     fn from_alloc(alloc: A) -> Self {
         Self {
@@ -438,7 +438,7 @@ where
 impl<T, A, L> AsRef<CxxVecLayout<T, A, L>> for CxxVecLayout<T, A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     fn as_ref(&self) -> &Self {
         self
@@ -448,7 +448,7 @@ where
 impl<T, A, L> AsRef<[T]> for CxxVecLayout<T, A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     fn as_ref(&self) -> &[T] {
         self
@@ -458,7 +458,7 @@ where
 impl<T, A, L> AsMut<CxxVecLayout<T, A, L>> for CxxVecLayout<T, A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     fn as_mut(&mut self) -> &mut Self {
         self
@@ -468,7 +468,7 @@ where
 impl<T, A, L> AsMut<[T]> for CxxVecLayout<T, A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     fn as_mut(&mut self) -> &mut [T] {
         self
@@ -478,7 +478,7 @@ where
 impl<T, A, L> Borrow<[T]> for CxxVecLayout<T, A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     fn borrow(&self) -> &[T] {
         &self[..]
@@ -488,7 +488,7 @@ where
 impl<T, A, L> BorrowMut<[T]> for CxxVecLayout<T, A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     fn borrow_mut(&mut self) -> &mut [T] {
         &mut self[..]
@@ -499,7 +499,7 @@ impl<T, A, L> fmt::Debug for CxxVecLayout<T, A, L>
 where
     T: fmt::Debug,
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
@@ -509,7 +509,7 @@ where
 impl<T, A, L> Default for CxxVecLayout<T, A, L>
 where
     A: CxxProxy + Default,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     fn default() -> Self {
         Self::from_alloc(A::default())
@@ -519,7 +519,7 @@ where
 impl<T, A, L> Deref for CxxVecLayout<T, A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     type Target = [T];
 
@@ -531,7 +531,7 @@ where
 impl<T, A, L> DerefMut for CxxVecLayout<T, A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.as_mut_slice()
@@ -541,7 +541,7 @@ where
 impl<T, A, L> Drop for CxxVecLayout<T, A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     fn drop(&mut self) {
         self.inner.with_proxy_mut(|val, alloc| unsafe {
@@ -554,7 +554,7 @@ impl<T, A, L> Clone for CxxVecLayout<T, A, L>
 where
     T: Clone + Sized,
     A: CxxProxy + Clone,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     fn clone(&self) -> Self {
         let mut new = Self::from_alloc(self.inner.alloc_as_ref().clone());
@@ -581,7 +581,7 @@ impl<T, I, A, L> Index<I> for CxxVecLayout<T, A, L>
 where
     I: SliceIndex<[T]>,
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     type Output = I::Output;
 
@@ -594,7 +594,7 @@ impl<T, I, A, L> IndexMut<I> for CxxVecLayout<T, A, L>
 where
     I: SliceIndex<[T]>,
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         IndexMut::index_mut(&mut **self, index)
@@ -604,7 +604,7 @@ where
 impl<T, A, L> Extend<T> for CxxVecLayout<T, A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         let iter = iter.into_iter();
@@ -617,7 +617,7 @@ impl<'a, T, A, L> Extend<&'a T> for CxxVecLayout<T, A, L>
 where
     T: Copy + 'a,
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().copied())
@@ -629,8 +629,8 @@ where
     T: PartialEq,
     A1: CxxProxy,
     A2: CxxProxy,
-    L1: WithCxxProxy<T, Alloc = A1, Value = CSTL_VectorVal>,
-    L2: WithCxxProxy<T, Alloc = A2, Value = CSTL_VectorVal>,
+    L1: WithCxxProxy<Alloc = A1, Value = RawVec>,
+    L2: WithCxxProxy<Alloc = A2, Value = RawVec>,
 {
     fn eq(&self, other: &CxxVecLayout<T, A2, L2>) -> bool {
         PartialEq::eq(&**self, &**other)
@@ -642,8 +642,8 @@ where
     T: PartialOrd,
     A1: CxxProxy,
     A2: CxxProxy,
-    L1: WithCxxProxy<T, Alloc = A1, Value = CSTL_VectorVal>,
-    L2: WithCxxProxy<T, Alloc = A2, Value = CSTL_VectorVal>,
+    L1: WithCxxProxy<Alloc = A1, Value = RawVec>,
+    L2: WithCxxProxy<Alloc = A2, Value = RawVec>,
 {
     fn partial_cmp(&self, other: &CxxVecLayout<T, A2, L2>) -> Option<std::cmp::Ordering> {
         PartialOrd::partial_cmp(&**self, &**other)
@@ -654,7 +654,7 @@ impl<T, A, L> Eq for CxxVecLayout<T, A, L>
 where
     T: Eq,
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
 }
 
@@ -662,7 +662,7 @@ impl<T, A, L> Ord for CxxVecLayout<T, A, L>
 where
     T: Ord,
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         Ord::cmp(&**self, &**other)
@@ -673,7 +673,7 @@ impl<T, A, L> Hash for CxxVecLayout<T, A, L>
 where
     T: Hash,
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     fn hash<H: Hasher>(&self, state: &mut H) {
         Hash::hash(&**self, state)
@@ -683,7 +683,7 @@ where
 impl<T, A, L> IntoIterator for CxxVecLayout<T, A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     type Item = T;
     type IntoIter = IntoIter<T, A>;
@@ -697,7 +697,7 @@ where
             let ptr = NonNull::new_unchecked(vec.as_mut_ptr());
             let end = ptr.add(vec.len());
 
-            let val = CSTL_VectorVal {
+            let val = RawVec {
                 first: vec.first_ptr() as _,
                 last: vec.last_ptr() as _,
                 end: vec.end_ptr() as _,
@@ -717,7 +717,7 @@ where
 impl<'a, T, A, L> IntoIterator for &'a CxxVecLayout<T, A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     type Item = &'a T;
     type IntoIter = slice::Iter<'a, T>;
@@ -730,7 +730,7 @@ where
 impl<'a, T, A, L> IntoIterator for &'a mut CxxVecLayout<T, A, L>
 where
     A: CxxProxy,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
     type Item = &'a mut T;
     type IntoIter = slice::IterMut<'a, T>;
@@ -744,7 +744,7 @@ unsafe impl<T, A, L> Send for CxxVecLayout<T, A, L>
 where
     T: Send,
     A: CxxProxy + Send,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
 }
 
@@ -752,20 +752,20 @@ unsafe impl<T, A, L> Sync for CxxVecLayout<T, A, L>
 where
     T: Sync,
     A: CxxProxy + Sync,
-    L: WithCxxProxy<T, Alloc = A, Value = CSTL_VectorVal>,
+    L: WithCxxProxy<Alloc = A, Value = RawVec>,
 {
 }
 
-const fn new_val() -> CSTL_VectorVal {
-    CSTL_VectorVal {
+const fn new_val() -> RawVec {
+    RawVec {
         first: ptr::null_mut(),
         last: ptr::null_mut(),
         end: ptr::null_mut(),
     }
 }
 
-impl<T, A: CxxProxy> WithCxxProxy<T> for Layout<T, A> {
-    type Value = CSTL_VectorVal;
+impl<T, A: CxxProxy> WithCxxProxy for Layout<T, A> {
+    type Value = RawVec;
     type Alloc = A;
 
     fn value_as_ref(&self) -> &Self::Value {
