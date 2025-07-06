@@ -6,21 +6,19 @@ use crate::alloc::{CxxProxy, WithCxxProxy};
 
 use super::{new_val, CxxVecLayout, SysAlloc};
 
-pub type CxxVec<T, A = SysAlloc> = CxxVecLayout<T, A, Layout<T, A>>;
+pub type CxxVec<T, A = SysAlloc> = CxxVecLayout<T, A, Layout<A>>;
 
 #[repr(C)]
-pub struct Layout<T, A: CxxProxy> {
+pub struct Layout<A: CxxProxy> {
     val: RawVec,
     alloc: A,
-    _marker: PhantomData<T>,
 }
 
-impl<T, A: CxxProxy> Layout<T, A> {
+impl<A: CxxProxy> Layout<A> {
     pub const fn new_in(alloc: A) -> Self {
         Self {
             alloc,
             val: new_val(),
-            _marker: PhantomData,
         }
     }
 }
@@ -47,7 +45,7 @@ impl<T, A: CxxProxy> CxxVec<T, A> {
     }
 }
 
-impl<T, A: CxxProxy> WithCxxProxy for Layout<T, A> {
+impl<A: CxxProxy> WithCxxProxy for Layout<A> {
     type Value = RawVec;
     type Alloc = A;
 
@@ -67,7 +65,6 @@ impl<T, A: CxxProxy> WithCxxProxy for Layout<T, A> {
         Self {
             alloc,
             val: new_val(),
-            _marker: PhantomData,
         }
     }
 }
