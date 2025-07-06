@@ -299,7 +299,7 @@ pub mod msvc2012 {
         }
     }
 
-    impl<A: CxxProxy> WithCxxProxy<u16> for Layout<A> {
+    impl<A: CxxProxy> WithCxxProxy for Layout<A> {
         type Value = RawUtf16String;
         type Alloc = A;
 
