@@ -32,7 +32,6 @@ impl<A: GlobalAlloc + Clone> CxxProxy for A {
     }
 }
 
-#[doc(hidden)]
 pub trait WithCxxProxy: Sized {
     type Value;
     type Alloc: CxxProxy;

@@ -113,11 +113,10 @@ impl<T, A: CxxProxy> Drop for IntoIter<T, A> {
         impl<T, A: CxxProxy> Drop for DropGuard<'_, T, A> {
             fn drop(&mut self) {
                 unsafe {
-                    let _ = CxxVec {
+                    let _ = CxxVec::<T, _> {
                         inner: Layout {
                             alloc: ManuallyDrop::take(&mut self.0.alloc),
                             val: self.0.val,
-                            _marker: PhantomData::<T>,
                         },
                         _marker: PhantomData,
                     };

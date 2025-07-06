@@ -29,13 +29,12 @@ pub mod into_iter;
 #[cfg(feature = "msvc2012")]
 pub mod msvc2012;
 
-pub type CxxVec<T, A = SysAlloc> = CxxVecLayout<T, A, Layout<T, A>>;
+pub type CxxVec<T, A = SysAlloc> = CxxVecLayout<T, A, Layout<A>>;
 
 #[repr(C)]
-pub struct Layout<T, A: CxxProxy> {
+pub struct Layout<A: CxxProxy> {
     alloc: A,
     val: RawVec,
-    _marker: PhantomData<T>,
 }
 
 #[repr(C)]
@@ -48,12 +47,11 @@ where
     _marker: PhantomData<(T, A)>,
 }
 
-impl<T, A: CxxProxy> Layout<T, A> {
+impl<A: CxxProxy> Layout<A> {
     pub const fn new_in(alloc: A) -> Self {
         Self {
             alloc,
             val: new_val(),
-            _marker: PhantomData,
         }
     }
 }
@@ -764,7 +762,7 @@ const fn new_val() -> RawVec {
     }
 }
 
-impl<T, A: CxxProxy> WithCxxProxy for Layout<T, A> {
+impl<A: CxxProxy> WithCxxProxy for Layout<A> {
     type Value = RawVec;
     type Alloc = A;
 
@@ -784,7 +782,6 @@ impl<T, A: CxxProxy> WithCxxProxy for Layout<T, A> {
         Self {
             alloc,
             val: new_val(),
-            _marker: PhantomData,
         }
     }
 }
