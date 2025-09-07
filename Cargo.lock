@@ -14,8 +14,7 @@ dependencies = [
 [[package]]
 name = "cstl-sys"
 version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93cb3efebcf02ee15186d55068b8394bf5df33331feabda4f2cdcf3573d7c659"
+source = "git+https://github.com/DuelistEventNetwork/cstl-sys?branch=denmain#85ca4d42676403c0f4c12d5869dbdf964cd593d8"
 dependencies = [
  "cc",
 ]
