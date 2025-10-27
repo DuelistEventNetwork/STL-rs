@@ -4,18 +4,18 @@ version = 4
 
 [[package]]
 name = "cc"
-version = "1.2.21"
+version = "1.2.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8691782945451c1c383942c4874dbe63814f61cb57ef773cda2972682b7bb3c0"
+checksum = "739eb0f94557554b3ca9a86d2d37bebd49c5e6d0c1d2bda35ba5bdac830befc2"
 dependencies = [
+ "find-msvc-tools",
  "shlex",
 ]
 
 [[package]]
 name = "cstl-sys"
 version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93cb3efebcf02ee15186d55068b8394bf5df33331feabda4f2cdcf3573d7c659"
+source = "git+https://github.com/DuelistEventNetwork/cstl-sys?branch=denmain#969164d2c555aa7cbd69a5f3739b3d195ab2cba4"
 dependencies = [
  "cc",
 ]
@@ -26,6 +26,12 @@ version = "4.4.0"
 dependencies = [
  "cstl-sys",
 ]
+
+[[package]]
+name = "find-msvc-tools"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52051878f80a721bb68ebfbc930e07b65ba72f2da88968ea5c06fd6ca3d3a127"
 
 [[package]]
 name = "shlex"
